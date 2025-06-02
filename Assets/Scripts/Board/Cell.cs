@@ -150,7 +150,7 @@ public class Cell : MonoBehaviour, IPointerDownHandler, IPointerEnterHandler, IP
 
             FROM_CELL = TO_CELL = null; // Reset FROM_CELL if not moved
         }
-        else if (TO_CELL != null && FROM_CELL != TO_CELL)
+        else if (TO_CELL != null && FROM_CELL != null && FROM_CELL != TO_CELL)
         {
             // Trigger move piece logic here
             MovePiece(FROM_CELL, TO_CELL);

@@ -56,6 +56,12 @@ public class StockfishController : Singleton<StockfishController>
             threads = logicalCores;
             UnityEngine.Debug.Log($"Forcing thread count to match CPU cores: {threads}");
         }
+
+        OnPositionEvaluated += (evaluation) =>
+        {
+            UnityEngine.Debug.Log($"Position evaluated: {evaluation} pawns");
+        };
+        
         StartEngine();
     }
 
@@ -245,12 +251,12 @@ public class StockfishController : Singleton<StockfishController>
     /// </summary>
     private void ProcessEngineOutput(string output)
     {
-        UnityEngine.Debug.Log($"Engine: {output}");
 
         if (output.Contains("readyok"))
         {
             isEngineReady = true;
             OnEngineReady?.Invoke();
+            UnityEngine.Debug.Log($"Engine: {output}");
         }
         else if (output.StartsWith("bestmove"))
         {
@@ -261,6 +267,7 @@ public class StockfishController : Singleton<StockfishController>
                 OnBestMoveFound?.Invoke(bestMove);
             }
             isAnalyzing = false;
+            UnityEngine.Debug.Log($"Engine: {output}");
         }
         else if (output.Contains("cp"))
         {
