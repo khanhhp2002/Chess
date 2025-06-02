@@ -172,6 +172,7 @@ public class Cell : MonoBehaviour, IPointerDownHandler, IPointerEnterHandler, IP
 
     public void OnDrag(PointerEventData eventData)
     {
+        if(_piece != null)
         _piece.transform.position = eventData.position; // Move the piece with the mouse
     }
     
