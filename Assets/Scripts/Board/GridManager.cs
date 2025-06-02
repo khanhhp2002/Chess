@@ -159,6 +159,7 @@ public class GridManager : MonoBehaviour
                         Cell cell = _grid[x, y];
                         Image pieceImage = PieceManager.Instance.GetPieceImage(type, color, cell.transform);
                         cell.SetPiece(pieceImage);
+                        cell.PieceType = type;
                     }
 
                     file++;
