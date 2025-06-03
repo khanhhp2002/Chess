@@ -160,6 +160,13 @@ public class Cell : MonoBehaviour, IPointerDownHandler, IPointerEnterHandler, IP
 
             FROM_CELL = TO_CELL = null; // Reset after move
         }
+        else if (TO_CELL == null && FROM_CELL != null)
+        {
+            //Debug.LogWarning("TO_CELL is null, no piece moved.");
+            FROM_CELL.SetCellColorOnDeselect(); // DeHighlight FROM_CELL if TO_CELL is null
+            FROM_CELL = null; // Reset FROM_CELL if no move occurred
+            SetPiece(_piece);
+        }
     }
 
     public void OnBeginDrag(PointerEventData eventData)
