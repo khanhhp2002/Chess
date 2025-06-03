@@ -1,6 +1,7 @@
 using UnityEngine;
 using ChessDotNet;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 
 /// <summary>
 /// GameManager is a singleton class that manages the chess game state.
@@ -50,6 +51,12 @@ public class GameManager : Singleton<GameManager>
             IsWhiteSide = true // Variable is not used, but can be useful for UI logic
         });
 
+        // Notify Stockfish of the move history
+        StockfishController.Instance.SetPositionWithMoves(_moveHistory);
+
+        // Request Stockfish to find the best move for the next turn
+        StockfishController.Instance.FindBestMove();
+
 
         Debug.Log("Game started!");
 
@@ -78,6 +85,13 @@ public class GameManager : Singleton<GameManager>
 
         // Clear previous move history
         _moveHistory.Clear();
+
+        ReadOnlyCollection<DetailedMove> moves = _game.Moves;
+        foreach (var move in moves)
+        {
+            // Store the move in history
+            _moveHistory.Add(move.SAN.ToLower());
+        }
 
         // Ping every listeners that a new game has started
         EventBus<NewGameEvent>.Raise(new NewGameEvent
@@ -124,11 +138,15 @@ public class GameManager : Singleton<GameManager>
             // Store the move in history
             _moveHistory.Add(moveString.ToLower());
 
+            // Stop Stockfish's current search if it is running
+            //StockfishController.Instance.StopFindBestMoveInfinite();
+
             // Notify Stockfish of the move history
             StockfishController.Instance.SetPositionWithMoves(_moveHistory);
 
             // Request Stockfish to find the best move for the next turn
             StockfishController.Instance.FindBestMove();
+            //StockfishController.Instance.FindBestMoveInfinite();
 
             // Switch the current player
             _currentPlayer = _currentPlayer == ChessDotNet.Player.White ? ChessDotNet.Player.Black : ChessDotNet.Player.White;

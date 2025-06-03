@@ -59,7 +59,7 @@ public class StockfishController : Singleton<StockfishController>
 
         OnPositionEvaluated += (evaluation) =>
         {
-            UnityEngine.Debug.Log($"Position evaluated: {evaluation} pawns");
+            UnityEngine.Debug.Log($"Position evaluated: {NormalizeEval(evaluation)} pawns");
         };
         
         StartEngine();
@@ -269,24 +269,54 @@ public class StockfishController : Singleton<StockfishController>
             isAnalyzing = false;
             UnityEngine.Debug.Log($"Engine: {output}");
         }
-        else if (output.Contains("cp"))
+        else if (output.StartsWith("info") && output.Contains("score cp"))
         {
-            // Parse centipawn evaluation
             string[] parts = output.Split(' ');
             for (int i = 0; i < parts.Length - 1; i++)
             {
-                if (parts[i] == "cp")
+                if (parts[i] == "score" && parts[i + 1] == "cp")
                 {
-                    if (int.TryParse(parts[i + 1], out int centipawns))
+                    if (int.TryParse(parts[i + 2], out int centipawns))
                     {
-                        float evaluation = centipawns / 100f; // Convert to pawns
-                        OnPositionEvaluated?.Invoke(evaluation);
+                        float evaluation = centipawns / 100f; // Convert to pawn units
+                        OnPositionEvaluated?.Invoke(NormalizeEval(evaluation));
                     }
-                    break;
+                }
+                else if (parts[i] == "score" && parts[i + 1] == "mate")
+                {
+                    // Optional: handle mate evaluation
+                    if (int.TryParse(parts[i + 2], out int mateIn))
+                    {
+                        float evaluation = mateIn > 0 ? 10f : -10f; // Treat mate as +10 or -10
+                        OnPositionEvaluated?.Invoke(NormalizeEval(evaluation));
+                    }
                 }
             }
         }
+        else if (output.StartsWith("info depth"))
+        {
+            // Optional: handle depth information
+            UnityEngine.Debug.Log($"Engine Depth Info: {output}");
+        }
+        else if (output.StartsWith("option name"))
+        {
+            // Optional: handle option settings
+            UnityEngine.Debug.Log($"Engine Option: {output}");
+        }
+        else
+        {
+            UnityEngine.Debug.Log($"Engine Output: {output}");
+        }
     }
+
+    float NormalizeEval(float eval)
+{
+    // Clamp extreme values to a sensible range, say -10 to +10
+    float clampedEval = Mathf.Clamp(eval, -10f, 10f);
+
+    // Convert from pawn units to [0, 1] where 0.5 = equal
+    return 0.5f + (clampedEval / 20f);
+}
 
     /// <summary>
     /// Sets up a position using FEN notation
@@ -322,6 +352,24 @@ public class StockfishController : Singleton<StockfishController>
     /// </summary>
     public void FindBestMove()
     {
+        if (!isEngineReady)
+        {
+            OnError?.Invoke("Engine not ready");
+            return;
+        }
+
+        if (isAnalyzing)
+        {
+            SendCommand("stop");
+            isAnalyzing = false;
+        }
+
+        isAnalyzing = true;
+        SendCommand($"go depth {depth}");
+    }
+
+    public void FindBestMoveInfinite()
+    {
         if (!isEngineReady || isAnalyzing)
         {
             OnError?.Invoke("Engine not ready or already analyzing");
@@ -329,7 +377,16 @@ public class StockfishController : Singleton<StockfishController>
         }
 
         isAnalyzing = true;
-        SendCommand($"go depth {depth}");
+        SendCommand("go infinite");
+    }
+
+    public void StopFindBestMoveInfinite()
+    {
+        if (isAnalyzing)
+        {
+            SendCommand("stop");
+            isAnalyzing = false;
+        }
     }
 
     /// <summary>

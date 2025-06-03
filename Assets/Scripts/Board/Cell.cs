@@ -304,6 +304,9 @@ public class Cell : MonoBehaviour, IPointerDownHandler, IPointerEnterHandler, IP
                 // Move the current piece to TO_CELL
                 toCell.SetPiece(fromCell._piece);
 
+                // Update the piece type in TO_CELL
+                toCell.PieceType = fromCell.PieceType;
+
                 // Clear the piece from FROM_CELL
                 fromCell.SetPiece(null);
             }
@@ -311,6 +314,9 @@ public class Cell : MonoBehaviour, IPointerDownHandler, IPointerEnterHandler, IP
             {
                 // Move the current piece to TO_CELL
                 toCell.SetPiece(fromCell._piece);
+
+                // Update the piece type in TO_CELL
+                toCell.PieceType = fromCell.PieceType;
 
                 // Clear the piece from FROM_CELL
                 fromCell.SetPiece(null);

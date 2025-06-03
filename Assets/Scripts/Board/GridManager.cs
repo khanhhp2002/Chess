@@ -1,3 +1,5 @@
+using System.Collections;
+using Michsky.MUIP;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -15,6 +17,9 @@ public class GridManager : MonoBehaviour
     [SerializeField] private GridLayoutGroup _boardLayoutGroup;
     [SerializeField] private GridLayoutGroup _rankLayoutGroup;
     [SerializeField] private GridLayoutGroup _fileLayoutGroup;
+
+    [Header("Evaluation charts"), Space(10)]
+    [SerializeField] private Image _evaluationChart;
 
     private Cell[,] _grid;
 
@@ -36,6 +41,8 @@ public class GridManager : MonoBehaviour
 
         _clearBoardEventBinding = new EventBinding<ClearBoardEvent>(ClearGrid);
         EventBus<ClearBoardEvent>.Register(_clearBoardEventBinding);
+
+        StockfishController.Instance.OnPositionEvaluated += UpdateEvaluationChart;
     }
 
     /// <summary>
@@ -47,6 +54,8 @@ public class GridManager : MonoBehaviour
         EventBus<NewGameEvent>.Deregister(_newGameEventBinding);
         EventBus<ReloadBoardEvent>.Deregister(_reloadBoardEventBinding);
         EventBus<ClearBoardEvent>.Deregister(_clearBoardEventBinding);
+
+        StockfishController.Instance.OnPositionEvaluated -= UpdateEvaluationChart;
     }
 
     /// <summary>
@@ -239,5 +248,34 @@ public class GridManager : MonoBehaviour
     {
         ClearGrid();
         FenNotationToGridBoard(reloadBoardEvent.Fen);
+    }
+
+    private Coroutine _evaluationChartCoroutine;
+
+    public void UpdateEvaluationChart(float value)
+    {
+        if (_evaluationChartCoroutine != null)
+        {
+            StopCoroutine(_evaluationChartCoroutine);
+        }
+
+        // Normalize the value to a range of 0 to 1
+        float normalizedValue = Mathf.Clamp01(value);
+
+        // Start the coroutine to update the evaluation chart
+        _evaluationChartCoroutine = StartCoroutine(UpdateEvaluationChartCoroutine(normalizedValue));
+    }
+
+    IEnumerator UpdateEvaluationChartCoroutine(float value)
+    {
+        float t = 1f;
+        float startValue = _evaluationChart.fillAmount;
+        float endValue = Mathf.Clamp01(value);
+        while (t > 0f)
+        {
+            t -= Time.deltaTime;
+            _evaluationChart.fillAmount = Mathf.Lerp(startValue, endValue, 1f - t);
+            yield return null;
+        }
     }
 }
