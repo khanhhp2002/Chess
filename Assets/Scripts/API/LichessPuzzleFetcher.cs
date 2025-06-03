@@ -3,15 +3,23 @@ using UnityEngine.Networking;
 using System.Collections;
 using Newtonsoft.Json;
 
-public class LichessPuzzleFetcher : MonoBehaviour {
-    private const string url = "https://lichess.org/api/puzzle/daily";
+public class LichessPuzzleFetcher : MonoBehaviour
+{
+    private const string url = "https://lichess.org/api/puzzle/";
 
-    public void GetDailyPuzzle() {
-        StartCoroutine(FetchPuzzle());
+    public void GetDailyPuzzle()
+    {
+        StartCoroutine(FetchPuzzle(PuzzleCallMode.daily));
     }
 
-    IEnumerator FetchPuzzle() {
-        UnityWebRequest request = UnityWebRequest.Get(url);
+    public void GetNextPuzzle()
+    {
+        StartCoroutine(FetchPuzzle(PuzzleCallMode.next));
+    }
+
+    IEnumerator FetchPuzzle(PuzzleCallMode mode)
+    {
+        UnityWebRequest request = UnityWebRequest.Get($"{url}{mode}");
         yield return request.SendWebRequest();
 
         if (request.result != UnityWebRequest.Result.Success)
@@ -27,12 +35,19 @@ public class LichessPuzzleFetcher : MonoBehaviour {
         }
     }
 
-    void DisplayPuzzle(LichessPuzzleResponse response) {
+    void DisplayPuzzle(LichessPuzzleResponse response)
+    {
         Debug.Log($"Puzzle ID: {response.puzzle.id}, Rating: {response.puzzle.rating}");
         Debug.Log($"Initial Ply: {response.puzzle.initialPly}");
         Debug.Log("Solution: " + string.Join(", ", response.puzzle.solution));
         Debug.Log("PGN: " + response.game.pgn);
     }
+}
+
+public enum PuzzleCallMode
+{
+    daily,
+    next
 }
 
 
