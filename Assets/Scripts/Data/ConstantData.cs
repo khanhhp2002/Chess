@@ -1,5 +1,9 @@
 using UnityEngine;
 
+/// <summary>
+/// ConstantData is a static class that holds constant values used throughout the chess game.
+/// It includes grid size, file identifiers, cell colors, and other constants that define the chessboard's appearance and behavior.
+/// </summary>
 public static class ConstantData
 {
     // Constants for the chessboard

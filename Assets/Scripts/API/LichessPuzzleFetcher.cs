@@ -3,25 +3,47 @@ using UnityEngine.Networking;
 using System.Collections;
 using Newtonsoft.Json;
 
+/// <summary>
+/// LichessPuzzleFetcher is a MonoBehaviour that fetches chess puzzles from the Lichess API.
+/// It can retrieve the daily puzzle or the next puzzle in the sequence.
+/// </summary>
 public class LichessPuzzleFetcher : MonoBehaviour
 {
     private const string url = "https://lichess.org/api/puzzle/";
 
+    /// <summary>
+    /// Fetches the daily puzzle from the Lichess API.
+    /// This method is called when the user wants to get the daily puzzle.
+    /// </summary>
     public void GetDailyPuzzle()
     {
         StartCoroutine(FetchPuzzle(PuzzleCallMode.daily));
     }
 
+    /// <summary>
+    /// Fetches the next puzzle in the sequence from the Lichess API.
+    /// This method is called when the user wants to get the next puzzle after solving the current one.
+    /// </summary>
     public void GetNextPuzzle()
     {
         StartCoroutine(FetchPuzzle(PuzzleCallMode.next));
     }
 
+    /// <summary>
+    /// Fetches a puzzle from the Lichess API based on the specified mode (daily or next).
+    /// This method uses UnityWebRequest to make an asynchronous request to the Lichess API.
+    /// </summary>
+    /// <param name="mode"></param>
+    /// <returns></returns>
     IEnumerator FetchPuzzle(PuzzleCallMode mode)
     {
+        // Construct the URL based on the mode
         UnityWebRequest request = UnityWebRequest.Get($"{url}{mode}");
+
+        // Wait for the request to complete
         yield return request.SendWebRequest();
 
+        // Check for errors in the request
         if (request.result != UnityWebRequest.Result.Success)
         {
             Debug.LogError("Error: " + request.error);
@@ -29,12 +51,23 @@ public class LichessPuzzleFetcher : MonoBehaviour
         else
         {
             string json = request.downloadHandler.text;
+
+            // Deserialize the JSON response into a LichessPuzzleResponse object
             LichessPuzzleResponse response = JsonConvert.DeserializeObject<LichessPuzzleResponse>(json);
+
+            // Log the response for debugging
             DisplayPuzzle(response);
-            GameManager.Instance.StartGame(response.game.pgn); // Start a new game with the puzzle's PGN
+
+            // Start a new game with the puzzle's PGN
+            GameManager.Instance.StartGame(response.game.pgn);
         }
     }
 
+    /// <summary>
+    /// Displays the puzzle information in the console.
+    /// This method logs the puzzle ID, rating, initial ply, solution, and PGN to the console for debugging purposes.
+    /// </summary>
+    /// <param name="response"></param>
     void DisplayPuzzle(LichessPuzzleResponse response)
     {
         Debug.Log($"Puzzle ID: {response.puzzle.id}, Rating: {response.puzzle.rating}");
@@ -44,6 +77,10 @@ public class LichessPuzzleFetcher : MonoBehaviour
     }
 }
 
+/// <summary>
+/// PuzzleCallMode is an enumeration that defines the modes for fetching puzzles from the Lichess API.
+/// It can be either 'daily' for the daily puzzle or 'next' for the next puzzle in the sequence.
+/// </summary>
 public enum PuzzleCallMode
 {
     daily,

@@ -17,7 +17,7 @@ public class StockfishController : Singleton<StockfishController>
     [SerializeField] private bool uci_chess960 = false; // Enable Chess960 (Fischer Random Chess)
     [SerializeField] private int elo = 1320; // ELO rating (1320 - 3190) 
     [SerializeField] private bool forceThreadCountEqualCpuCores = true; // Force thread count to match CPU cores
-                                             //[SerializeField] private int skillLevel = 20; // 0-20, where 20 is strongest
+    //[SerializeField] private int skillLevel = 20; // 0-20, where 20 is strongest
 
     private Process stockfishProcess;
     private StreamWriter engineInput;

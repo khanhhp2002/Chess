@@ -2,6 +2,10 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
+/// <summary>
+/// PieceManager is a singleton class that manages chess piece images.
+/// It handles the creation, reuse, and clearing of piece images on the chess board.
+/// </summary>
 public class PieceManager : Singleton<PieceManager>
 {
     [SerializeField] private Sprite[] _pieceSprites; // Array of piece sprites
@@ -17,19 +21,35 @@ public class PieceManager : Singleton<PieceManager>
     /// </summary>
     private List<Image> _activePieces = new List<Image>();
 
+    /// <summary>
+    /// Event binding for clearing the board.
+    /// This event is triggered to clear all active pieces from the board.
+    /// </summary>
     private EventBinding<ClearBoardEvent> _clearBoardEventBinding;
 
+    /// <summary>
+    /// Called when the script instance is being enabled.
+    /// This method registers the event binding for clearing the board.
+    /// </summary>
     private void OnEnable()
     {
         _clearBoardEventBinding = new EventBinding<ClearBoardEvent>(ClearActivePieces);
         EventBus<ClearBoardEvent>.Register(_clearBoardEventBinding);
     }
 
+    /// <summary>
+    /// Called when the script instance is being disabled.
+    /// This method deregisters the event binding to prevent memory leaks.
+    /// </summary>
     private void OnDisable()
     {
         EventBus<ClearBoardEvent>.Deregister(_clearBoardEventBinding);
     }
 
+    /// <summary>
+    /// Awake is called when the script instance is being loaded.
+    /// This method checks if the piece sprites and prefab are assigned correctly.
+    /// </summary>
     private void Awake()
     {
         if (_pieceSprites == null || _pieceSprites.Length < 12)
@@ -43,37 +63,52 @@ public class PieceManager : Singleton<PieceManager>
         }
     }
 
-    public Image GetPieceImage(PieceType pieceType, PieceColor pieceColor, Transform parent = null)
+    /// <summary>
+    /// Gets a piece image based on the specified piece type and color.
+    /// This method retrieves an image from the pool if available, or instantiates a new one if the pool is empty.
+    /// </summary>
+    /// <param name="pieceType"></param>
+    /// <param name="pieceColor"></param>
+    /// <param name="parent"></param>
+    /// <returns></returns>
+    public Image GetPieceImage(PieceType pieceType, PieceColor pieceColor)
     {
         int index = (int)pieceType + (pieceColor == PieceColor.White ? 0 : 6) - 1;
 
         Image pieceImage;
+
+        // If pool has available images, pop one from the pool
         if (_piecePool.Count > 0)
         {
             pieceImage = _piecePool.Pop();
         }
-        else
+        else // If pool is empty, instantiate a new piece image
         {
             pieceImage = Instantiate(_piecePrefab);
         }
 
+        // Attach sprite into the piece image
         pieceImage.sprite = _pieceSprites[index];
+
+        // Activate the piece image
         pieceImage.gameObject.SetActive(true);
+
+        // Add the image into the active pieces list
         _activePieces.Add(pieceImage);
-        // pieceImage.transform.SetParent(parent); // Set parent and maintain local scale
-        // pieceImage.transform.localPosition = Vector3.zero; // Reset position to avoid positioning issues
-        // pieceImage.transform.localScale = Vector3.one * 0.7f; // Reset scale to avoid scaling issues
-        // pieceImage.rectTransform.offsetMax = Vector2.zero; // Reset offset to avoid layout issues
-        // pieceImage.rectTransform.offsetMin = Vector2.zero; // Reset offset to avoid layout issues
-        // pieceImage.rectTransform.anchorMax = Vector2.one; // Reset anchor to avoid layout issues
-        // pieceImage.rectTransform.anchorMin = Vector2.zero; // Reset anchor to avoid layout issues
+
         return pieceImage;
     }
 
+    /// <summary>
+    /// Returns a piece image back to the pool.
+    /// This method deactivates the image, resets its position and parent, and pushes it back to the pool for reuse.
+    /// </summary>
+    /// <param name="pieceImage"></param>
     public void ReturnPieceImage(Image pieceImage)
     {
         if (pieceImage != null && _activePieces.Contains(pieceImage))
         {
+            // Remove the piece image from the active pieces list
             _activePieces.Remove(pieceImage);
 
             pieceImage.transform.SetParent(null); // Optionally reset parent
@@ -87,6 +122,10 @@ public class PieceManager : Singleton<PieceManager>
         }
     }
 
+    /// <summary>
+    /// Clears all active pieces from the board.
+    /// This method deactivates all active piece images, resets their parent, and pushes them back to the pool for reuse.
+    /// </summary>
     private void ClearActivePieces()
     {
         foreach (var piece in _activePieces)

@@ -1,6 +1,10 @@
 using TMPro;
 using UnityEngine;
 
+/// <summary>
+/// IndicatorText is a MonoBehaviour that manages the text displayed in the chess board indicators.
+/// It allows setting the text and changing its color based on the cell's state (even/odd, selected).
+/// </summary>
 public class IndicatorText : MonoBehaviour
 {
     [SerializeField] private TMP_Text _text;

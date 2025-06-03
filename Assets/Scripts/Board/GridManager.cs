@@ -1,6 +1,9 @@
 using UnityEngine;
 using UnityEngine.UI;
 
+/// <summary>
+/// GridManager is a MonoBehaviour that manages the chess board user interface.
+/// </summary>
 public class GridManager : MonoBehaviour
 {
     [Header("Prefabs"), Space(10)]
@@ -19,6 +22,10 @@ public class GridManager : MonoBehaviour
     private EventBinding<NewGameEvent> _newGameEventBinding;
     private EventBinding<ReloadBoardEvent> _reloadBoardEventBinding;
 
+    /// <summary>
+    /// Called when the script instance is being loaded.
+    /// This method registers event bindings for new game, reload board, and clear board events.
+    /// </summary>
     void OnEnable()
     {
         _newGameEventBinding = new EventBinding<NewGameEvent>(OnNewGame);
@@ -31,6 +38,10 @@ public class GridManager : MonoBehaviour
         EventBus<ClearBoardEvent>.Register(_clearBoardEventBinding);
     }
 
+    /// <summary>
+    /// Called when the script instance is being disabled.
+    /// This method deregisters the event bindings to prevent memory leaks and unwanted behavior.
+    /// </summary>
     void OnDisable()
     {
         EventBus<NewGameEvent>.Deregister(_newGameEventBinding);
@@ -38,6 +49,10 @@ public class GridManager : MonoBehaviour
         EventBus<ClearBoardEvent>.Deregister(_clearBoardEventBinding);
     }
 
+    /// <summary>
+    /// Initializes the grid and generates the chess board UI elements.
+    /// This method sets up the grid size, cell size, and generates the board cells, rank indicators, and file indicators.
+    /// </summary>
     private void Start()
     {
         // Init grid
@@ -52,6 +67,7 @@ public class GridManager : MonoBehaviour
         float cellSize = boardSize / GRIDSIZE;
         Vector2 cellSizeVector = new Vector2(cellSize, cellSize);
 
+        // Set layout groups cell size
         _boardLayoutGroup.cellSize = cellSizeVector;
         _rankLayoutGroup.cellSize = cellSizeVector;
         _fileLayoutGroup.cellSize = cellSizeVector;
@@ -63,13 +79,20 @@ public class GridManager : MonoBehaviour
         {
             for (int j = 0; j < GRIDSIZE; j++)
             {
+                // Instantiate cell
                 Cell cell = Instantiate(_cellPrefab, _boardLayoutGroup.transform);
+
+                // Set cell properties
                 cell.CellName = $"{files[j]}{1 + i}";
+
+                // Add cell to grid
                 _grid[i, j] = cell;
 
                 // Set cell color
                 cell.SetCellColor((i + j) % 2 == 0);
-                cell.CellPosition = new Vector2Int(j + 1, i + 1); // Set cell position in the grid
+
+                // Set cell position
+                cell.CellPosition = new Vector2Int(j + 1, i + 1);
             }
         }
 
@@ -90,26 +113,44 @@ public class GridManager : MonoBehaviour
         }
     }
 
+
+    /// <summary>
+    /// Handles the NewGameEvent to create a new game board.
+    /// This method initializes the chess board based on the provided FEN notation and sets up the initial game state.
+    /// </summary>
+    /// <param name="newGameEvent"></param>
     private void OnNewGame(NewGameEvent newGameEvent)
     {
         // Create a solution from the FEN notation if provided
         FenNotationToGridBoard(newGameEvent.Fen);
 
+        // Flip the board if the player is on the black side
         if (newGameEvent.IsWhiteSide)
         {
 
         }
     }
 
+    /// <summary>
+    /// Converts FEN notation to a grid board representation.
+    /// This method parses the FEN string to set up the chess pieces on the grid board.
+    /// </summary>
+    /// <param name="fen"></param>
     private void FenNotationToGridBoard(string fen)
     {
-        // This method can be implemented to create a solution from the FEN notation    
+        // Fen example: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
         Debug.Log($"Creating solution from FEN: {fen}");
 
+        // Sections: | "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR" | "w" | "KQkq" | "-" | "0" | "1" |
         string[] sections = fen.Split(' ');
+
+        // First section: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR"
         string piecePlacement = sections[0];
+
+        // Rows: | "rnbqkbnr" | "pppppppp" | "8" | "8" | "8" | "8" | "PPPPPPPP" | "RNBQKBNR" |
         string[] rows = piecePlacement.Split('/');
 
+        // Validate the number of rows
         if (rows.Length != 8)
         {
             Debug.LogError("Invalid FEN: Expected 8 ranks.");
@@ -132,6 +173,8 @@ public class GridManager : MonoBehaviour
                     PieceColor color = char.IsUpper(symbol) ? PieceColor.White : PieceColor.Black;
                     PieceType type;
 
+                    // Convert the symbol to a PieceType
+                    // Use char.ToLower to handle both upper and lower case symbols
                     switch (char.ToLower(symbol))
                     {
                         case 'p': type = PieceType.Pawn; break;
@@ -156,9 +199,16 @@ public class GridManager : MonoBehaviour
                     }
                     else
                     {
+                        // Set the piece in the grid
                         Cell cell = _grid[x, y];
-                        Image pieceImage = PieceManager.Instance.GetPieceImage(type, color, cell.transform);
+
+                        //Get chess piece image
+                        Image pieceImage = PieceManager.Instance.GetPieceImage(type, color);
+
+                        // Set the piece in the cell
                         cell.SetPiece(pieceImage);
+
+                        // Set the piece type
                         cell.PieceType = type;
                     }
 
@@ -168,6 +218,10 @@ public class GridManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Clears the chess board grid.
+    /// This method removes all pieces from the grid cells, effectively resetting the board.
+    /// </summary>
     public void ClearGrid()
     {
         foreach (Cell cell in _grid)
@@ -176,6 +230,11 @@ public class GridManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Handles the ReloadBoardEvent to reload the chess board with a new FEN notation.
+    /// This method clears the current grid and sets up the board based on the provided FEN string.
+    /// </summary>
+    /// <param name="reloadBoardEvent"></param>
     private void OnReloadBoard(ReloadBoardEvent reloadBoardEvent)
     {
         ClearGrid();
