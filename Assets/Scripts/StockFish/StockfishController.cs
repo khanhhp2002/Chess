@@ -59,7 +59,7 @@ public class StockfishController : Singleton<StockfishController>
 
         OnPositionEvaluated += (evaluation) =>
         {
-            UnityEngine.Debug.Log($"Position evaluated: {evaluation} pawns");
+
         };
         
         StartEngine();
@@ -264,10 +264,12 @@ public class StockfishController : Singleton<StockfishController>
             if (parts.Length > 1)
             {
                 string bestMove = parts[1];
-                OnBestMoveFound?.Invoke(bestMove);
+                UnityMainThreadDispatcher.Enqueue(() =>
+                {
+                    OnBestMoveFound?.Invoke(bestMove);
+                });
             }
             isAnalyzing = false;
-            UnityEngine.Debug.Log($"Engine: {output}");
         }
         else if (output.StartsWith("info") && output.Contains("score cp"))
         {
@@ -293,20 +295,20 @@ public class StockfishController : Singleton<StockfishController>
                 }
             }
         }
-        else if (output.StartsWith("info depth"))
-        {
-            // Optional: handle depth information
-            UnityEngine.Debug.Log($"Engine Depth Info: {output}");
-        }
-        else if (output.StartsWith("option name"))
-        {
-            // Optional: handle option settings
-            UnityEngine.Debug.Log($"Engine Option: {output}");
-        }
-        else
-        {
-            UnityEngine.Debug.Log($"Engine Output: {output}");
-        }
+        // else if (output.StartsWith("info depth"))
+        // {
+        //     // Optional: handle depth information
+        //     UnityEngine.Debug.Log($"Engine Depth Info: {output}");
+        // }
+        // else if (output.StartsWith("option name"))
+        // {
+        //     // Optional: handle option settings
+        //     UnityEngine.Debug.Log($"Engine Option: {output}");
+        // }
+        // else
+        // {
+        //     UnityEngine.Debug.Log($"Engine Output: {output}");
+        // }
     }
 
     float NormalizeEval(float eval)

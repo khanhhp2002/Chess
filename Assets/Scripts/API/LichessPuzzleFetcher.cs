@@ -10,6 +10,7 @@ using Newtonsoft.Json;
 public class LichessPuzzleFetcher : MonoBehaviour
 {
     private const string url = "https://lichess.org/api/puzzle/";
+    [SerializeField] private LichessPuzzleResponse lichessPuzzleResponse;
 
     /// <summary>
     /// Fetches the daily puzzle from the Lichess API.
@@ -53,27 +54,11 @@ public class LichessPuzzleFetcher : MonoBehaviour
             string json = request.downloadHandler.text;
 
             // Deserialize the JSON response into a LichessPuzzleResponse object
-            LichessPuzzleResponse response = JsonConvert.DeserializeObject<LichessPuzzleResponse>(json);
-
-            // Log the response for debugging
-            DisplayPuzzle(response);
+            lichessPuzzleResponse = JsonConvert.DeserializeObject<LichessPuzzleResponse>(json);
 
             // Start a new game with the puzzle's PGN
-            GameManager.Instance.StartGame(response.game.pgn);
+            GameManager.Instance.StartGame(lichessPuzzleResponse);
         }
-    }
-
-    /// <summary>
-    /// Displays the puzzle information in the console.
-    /// This method logs the puzzle ID, rating, initial ply, solution, and PGN to the console for debugging purposes.
-    /// </summary>
-    /// <param name="response"></param>
-    void DisplayPuzzle(LichessPuzzleResponse response)
-    {
-        Debug.Log($"Puzzle ID: {response.puzzle.id}, Rating: {response.puzzle.rating}");
-        Debug.Log($"Initial Ply: {response.puzzle.initialPly}");
-        Debug.Log("Solution: " + string.Join(", ", response.puzzle.solution));
-        Debug.Log("PGN: " + response.game.pgn);
     }
 }
 

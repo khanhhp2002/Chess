@@ -608,7 +608,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9c94724c8b2166f4eaec2e19325f8182, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  m_isDestroyOnLoad: 1
+  m_isDestroyOnLoad: 0
   _pieceSprites:
   - {fileID: 21300000, guid: db31e824d8a7cd343b8f3c26877c78c1, type: 3}
   - {fileID: 21300000, guid: ebef5eaa6e5feb548b3cba07fcd41b77, type: 3}
@@ -650,7 +650,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 71a642e85bd19584593ebbd3f4bebdb0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  m_isDestroyOnLoad: 1
+  m_isDestroyOnLoad: 0
 --- !u!114 &321586320
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -663,7 +663,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 195178103c10dca40883688837e1ca32, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  m_isDestroyOnLoad: 1
+  m_isDestroyOnLoad: 0
   depth: 20
   threads: 4
   hashSize: 1000
@@ -695,6 +695,23 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 57edb995238463a4e99056e64112024f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  lichessPuzzleResponse:
+    game:
+      id: 
+      rated: 0
+      pgn: 
+      clock: 
+      perf:
+        key: 
+        name: 
+      players: []
+    puzzle:
+      id: 
+      rating: 0
+      plays: 0
+      solution: []
+      themes: []
+      initialPly: 0
 --- !u!1 &337632043
 GameObject:
   m_ObjectHideFlags: 0

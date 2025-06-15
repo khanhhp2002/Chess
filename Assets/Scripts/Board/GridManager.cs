@@ -265,7 +265,6 @@ public class GridManager : MonoBehaviour
 
     IEnumerator UpdateEvaluationChartCoroutine(float value)
     {
-        Debug.Log($"Updating evaluation chart to value: {value}");
         // Ensure the value is clamped between 0 and 1
         float t = 1f;
         float startValue = _evaluationChart.fillAmount;
