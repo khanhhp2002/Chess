@@ -664,7 +664,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   m_isDestroyOnLoad: 1
-  depth: 15
+  depth: 20
   threads: 4
   hashSize: 1000
   ponder: 0
@@ -1146,7 +1146,7 @@ MonoBehaviour:
   m_PreserveAspect: 0
   m_FillCenter: 1
   m_FillMethod: 1
-  m_FillAmount: 0.516
+  m_FillAmount: 0.537
   m_FillClockwise: 1
   m_FillOrigin: 0
   m_UseSpriteMesh: 0

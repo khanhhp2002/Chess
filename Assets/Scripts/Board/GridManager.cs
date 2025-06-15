@@ -259,18 +259,17 @@ public class GridManager : MonoBehaviour
             StopCoroutine(_evaluationChartCoroutine);
         }
 
-        // Normalize the value to a range of 0 to 1
-        float normalizedValue = Mathf.Clamp01(value);
-
         // Start the coroutine to update the evaluation chart
-        _evaluationChartCoroutine = StartCoroutine(UpdateEvaluationChartCoroutine(normalizedValue));
+        _evaluationChartCoroutine = StartCoroutine(UpdateEvaluationChartCoroutine(value));
     }
 
     IEnumerator UpdateEvaluationChartCoroutine(float value)
     {
+        Debug.Log($"Updating evaluation chart to value: {value}");
+        // Ensure the value is clamped between 0 and 1
         float t = 1f;
         float startValue = _evaluationChart.fillAmount;
-        float endValue = Mathf.Clamp01(value);
+        float endValue = value;
         while (t > 0f)
         {
             t -= Time.deltaTime;

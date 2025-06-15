@@ -59,7 +59,7 @@ public class StockfishController : Singleton<StockfishController>
 
         OnPositionEvaluated += (evaluation) =>
         {
-            UnityEngine.Debug.Log($"Position evaluated: {NormalizeEval(evaluation)} pawns");
+            UnityEngine.Debug.Log($"Position evaluated: {evaluation} pawns");
         };
         
         StartEngine();
