@@ -1,12 +1,14 @@
+using System;
 using System.Collections;
 using Michsky.MUIP;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
 /// GridManager is a MonoBehaviour that manages the chess board user interface.
 /// </summary>
-public class GridManager : MonoBehaviour
+public class GridManager : Singleton<GridManager>
 {
     [Header("Prefabs"), Space(10)]
     [SerializeField] private Cell _cellPrefab;
@@ -21,11 +23,22 @@ public class GridManager : MonoBehaviour
     [Header("Evaluation charts"), Space(10)]
     [SerializeField] private Image _evaluationChart;
 
+    [Header("Player Info"), Space(10)]
+    [SerializeField] private PlayerInfo _playerInfoTop;
+    [SerializeField] private PlayerInfo _playerInfoBottom;
+
+    [SerializeField] private BoardLoadingCover _boardLoadingCover;
+    [SerializeField] private TMP_Text _hintText;
+
+
     private Cell[,] _grid;
 
     private EventBinding<ClearBoardEvent> _clearBoardEventBinding;
     private EventBinding<NewGameEvent> _newGameEventBinding;
     private EventBinding<ReloadBoardEvent> _reloadBoardEventBinding;
+    private EventBinding<CurrentPlayerChangedEvent> _currentPlayerChangedEventBinding;
+    private EventBinding<GameEndEvent> _gameEndEventBinding;
+    private EventBinding<NewPuzzleGameEvent> _newPuzzleGameEventBinding;
 
     /// <summary>
     /// Called when the script instance is being loaded.
@@ -42,6 +55,15 @@ public class GridManager : MonoBehaviour
         _clearBoardEventBinding = new EventBinding<ClearBoardEvent>(ClearGrid);
         EventBus<ClearBoardEvent>.Register(_clearBoardEventBinding);
 
+        _currentPlayerChangedEventBinding = new EventBinding<CurrentPlayerChangedEvent>(OnPlayerTurnChanged);
+        EventBus<CurrentPlayerChangedEvent>.Register(_currentPlayerChangedEventBinding);
+
+        _gameEndEventBinding = new EventBinding<GameEndEvent>(OnGameEnd);
+        EventBus<GameEndEvent>.Register(_gameEndEventBinding);
+
+        _newPuzzleGameEventBinding = new EventBinding<NewPuzzleGameEvent>(OnNewPuzzleGame);
+        EventBus<NewPuzzleGameEvent>.Register(_newPuzzleGameEventBinding);
+
         StockfishController.Instance.OnPositionEvaluated += UpdateEvaluationChart;
     }
 
@@ -54,6 +76,7 @@ public class GridManager : MonoBehaviour
         EventBus<NewGameEvent>.Deregister(_newGameEventBinding);
         EventBus<ReloadBoardEvent>.Deregister(_reloadBoardEventBinding);
         EventBus<ClearBoardEvent>.Deregister(_clearBoardEventBinding);
+        EventBus<CurrentPlayerChangedEvent>.Deregister(_currentPlayerChangedEventBinding);
 
         StockfishController.Instance.OnPositionEvaluated -= UpdateEvaluationChart;
     }
@@ -133,11 +156,75 @@ public class GridManager : MonoBehaviour
         // Create a solution from the FEN notation if provided
         FenNotationToGridBoard(newGameEvent.Fen);
 
+        _playerInfoTop.SetPlayerInfo(true);
+        _playerInfoBottom.SetPlayerInfo(false);
+
         // Flip the board if the player is on the black side
         if (newGameEvent.IsWhiteSide)
         {
 
         }
+    }
+
+    /// <summary>
+    /// Handles the NewPuzzleGameEvent to set up a new puzzle game.
+    /// This method updates the player information UI and displays the loading cover with puzzle details.
+    /// </summary>
+    /// <param name="newPuzzleGameEvent"></param>
+    private void OnNewPuzzleGame(NewPuzzleGameEvent newPuzzleGameEvent)
+    {
+        _playerInfoBottom.SetPlayerInfo(newPuzzleGameEvent.whitePlayerName,
+            int.Parse(newPuzzleGameEvent.whitePlayerElo),
+            null);
+        _playerInfoTop.SetPlayerInfo(newPuzzleGameEvent.blackPlayerName,
+            int.Parse(newPuzzleGameEvent.blackPlayerElo),
+            null);
+
+        string[] themes = newPuzzleGameEvent.themes;
+        string tags = string.Empty;
+        string mateInXMoves = string.Empty;
+        foreach (string theme in themes)
+        {
+            Debug.Log($"Theme: {theme}");
+            if (theme.ToLower().Contains("matein"))
+            {
+                mateInXMoves = $"Mate in {theme.Substring(6)}";
+                continue;
+            }
+            tags += $"#{theme} ";
+        }
+        string description = string.IsNullOrEmpty(mateInXMoves) ? tags : $"<u>{mateInXMoves}</u>\n\n{tags}";
+        _boardLoadingCover.TurnOff(
+            $"Puzzle: {newPuzzleGameEvent.whitePlayerName} vs {newPuzzleGameEvent.blackPlayerName}",
+            description);
+
+        string solutionString = string.Join(" - ", newPuzzleGameEvent.solution);
+        _hintText.text = $"{solutionString}"; 
+        _hintText.gameObject.SetActive(false);
+    }
+
+    /// <summary>
+    /// Displays the hint text for the puzzle solution.
+    /// This method activates the hint text UI element to show the solution to the puzzle.
+    /// </summary>
+    public void ShowHintText()
+    {
+        if (GameManager.Instance.HasHint())
+            _hintText.gameObject.SetActive(true);
+        else
+        {
+            GameManager.Instance.OpenNotificationWindow("No Puzzle in Progress",
+                    "Please start a new game first", () => GameManager.Instance.StartGameOrPuzzle(true), null);
+        }
+    }
+
+    /// <summary>
+    /// Turns on the board loading cover.
+    /// This method activates the loading cover UI element to indicate that the board is being set up.
+    /// </summary>
+    public void TurnOnBoardLoadingCover()
+    {
+        _boardLoadingCover.TurnOn();
     }
 
     /// <summary>
@@ -276,4 +363,49 @@ public class GridManager : MonoBehaviour
             yield return null;
         }
     }
+
+    /// <summary>
+    /// Handles the CurrentPlayerChangedEvent to update the player information UI.
+    /// This method updates the player info based on the current player and whether they are a bot or a human player.
+    /// </summary>
+    /// param name="currentPlayerChangedEvent"></param>
+    private void OnPlayerTurnChanged(CurrentPlayerChangedEvent currentPlayerChangedEvent)
+    {
+        ChessDotNet.Player currentPlayer = currentPlayerChangedEvent.CurrentPlayer;
+
+        if (currentPlayer == ChessDotNet.Player.White)
+        {
+            _playerInfoTop.FadePlayerInfo();
+            _playerInfoBottom.ShowPlayerInfo();
+        }
+        else
+        {
+            _playerInfoTop.ShowPlayerInfo();
+            _playerInfoBottom.FadePlayerInfo();
+        }
+    }
+
+    private void OnGameEnd(GameEndEvent gameEndEvent)
+    {
+        // Hide player info when the game ends
+        _playerInfoTop.FadePlayerInfo();
+        _playerInfoBottom.FadePlayerInfo();
+
+        // Optionally, you can display a message or handle the game end logic here
+        if (gameEndEvent.IsWhiteWinner)
+        {
+            _playerInfoBottom.ShowPlayerInfo();
+            _playerInfoTop.FadePlayerInfo();
+            _playerInfoBottom.SetCrownVisibility(true);
+        }
+        else if (gameEndEvent.IsBlackWinner)
+        {
+            _playerInfoTop.ShowPlayerInfo();
+            _playerInfoBottom.FadePlayerInfo();
+            _playerInfoTop.SetCrownVisibility(true);
+        }
+    }
+    
+    public PlayerInfo PlayerInfoTop => _playerInfoTop;
+    public PlayerInfo PlayerInfoBottom => _playerInfoBottom;
 }

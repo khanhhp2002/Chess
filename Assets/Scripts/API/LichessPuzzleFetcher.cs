@@ -7,7 +7,7 @@ using Newtonsoft.Json;
 /// LichessPuzzleFetcher is a MonoBehaviour that fetches chess puzzles from the Lichess API.
 /// It can retrieve the daily puzzle or the next puzzle in the sequence.
 /// </summary>
-public class LichessPuzzleFetcher : MonoBehaviour
+public class LichessPuzzleFetcher : Singleton<LichessPuzzleFetcher>
 {
     private const string url = "https://lichess.org/api/puzzle/";
     [SerializeField] private LichessPuzzleResponse lichessPuzzleResponse;

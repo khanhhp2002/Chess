@@ -2,6 +2,9 @@ using UnityEngine;
 using ChessDotNet;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using Michsky.MUIP;
+using UnityEngine.Events;
+using System;
 
 /// <summary>
 /// GameManager is a singleton class that manages the chess game state.
@@ -18,7 +21,17 @@ public class GameManager : Singleton<GameManager>
     /// Stores the current player whose turn it is to play.
     /// </summary>
     private ChessDotNet.Player _currentPlayer;
-    
+    public ChessDotNet.Player CurrentPlayer
+    {
+        get { return _currentPlayer; }
+        private set
+        {
+            _currentPlayer = value;
+            // Notify listeners that the current player has changed
+            EventBus<CurrentPlayerChangedEvent>.Raise(new CurrentPlayerChangedEvent(_currentPlayer));
+        }
+    }
+
 
     /// <summary>
     /// Stores the side of the AI player.
@@ -36,7 +49,7 @@ public class GameManager : Singleton<GameManager>
     /// Indicates whether the game is in puzzle mode.
     /// This is used to differentiate between a standard game and a puzzle challenge, where the player may have specific objectives or constraints.
     /// </summary>
-    private bool _isPuzzleMode = false;
+    private bool _isPuzzleMode = true;
 
     /// <summary>
     /// Stores the current puzzle response from Lichess.
@@ -62,9 +75,25 @@ public class GameManager : Singleton<GameManager>
     /// </summary>
     private List<string> _moveHistory = new List<string>();
 
+    /// <summary>
+    /// Reference to the modal window manager for displaying notifications.
+    /// </summary>
+    /// private ModalWindowManager _modalWindowManager;
+    [SerializeField] private ModalWindowManager _modalWindowManager;
+    private Action _onConfirmAction;
+    private Action _onCancelAction;
+
     private void Start()
     {
         StockfishController.Instance.OnBestMoveFound += AIMakeMove;
+        _modalWindowManager.onConfirm.AddListener(() =>
+        {
+            _onConfirmAction?.Invoke();
+        });
+        _modalWindowManager.onCancel.AddListener(() =>
+        {
+            _onCancelAction?.Invoke();
+        });
     }
 
     void OnDestroy()
@@ -111,14 +140,15 @@ public class GameManager : Singleton<GameManager>
         Debug.Log("Game started!");
 
         // Set the starting player
-        _currentPlayer = ChessDotNet.Player.White;
+        CurrentPlayer = ChessDotNet.Player.White;
+        _aiSide = ChessDotNet.Player.Black; // Set AI side to Black by default
     }
 
     /// <summary>
     /// 
     /// </summary>
     /// <param name="pgn"></param>
-    public void StartGame(string pgn)
+    public void StartGame(string pgn, bool isPuzzle = false)
     {
         // Check if a game is already in progress => clear board
         if (_game != null)
@@ -147,16 +177,17 @@ public class GameManager : Singleton<GameManager>
         }
 
         // Ping every listeners that a new game has started
-        EventBus<NewGameEvent>.Raise(new NewGameEvent
-        {
-            Fen = _game.GetFen(),
-            IsWhiteSide = true // Variable is not used, but can be useful for UI logic
-        });
+        if (!isPuzzle)
+            EventBus<NewGameEvent>.Raise(new NewGameEvent
+            {
+                Fen = _game.GetFen(),
+                IsWhiteSide = true // Variable is not used, but can be useful for UI logic
+            });
 
         Debug.Log("Daily puzzle game started!");
 
         // Set the starting player based on the PGN
-        _currentPlayer = _game.WhoseTurn;
+        CurrentPlayer = _game.WhoseTurn;
     }
 
     /// <summary>
@@ -182,6 +213,38 @@ public class GameManager : Singleton<GameManager>
 
         // Store the puzzle solutions
         _puzzleSolutions = lichessPuzzleResponse.puzzle.solution;
+
+        // Notify listeners that a new puzzle game has started
+        Player[] players = lichessPuzzleResponse.game.players;
+        Player blackPlayer;
+        Player whitePlayer;
+        if (players.Length == 2)
+        {
+            if (players[0].color.Equals("black"))
+            {
+                blackPlayer = players[0];
+                whitePlayer = players[1];
+            }
+            else
+            {
+                blackPlayer = players[1];
+                whitePlayer = players[0];
+            }
+        }
+        else
+        {
+            // Fallback to default values if players are not provided
+            blackPlayer = new Player { name = "Black Player", rating = 0 };
+            whitePlayer = new Player { name = "White Player", rating = 0 };
+        }
+        EventBus<NewPuzzleGameEvent>.Raise(new NewPuzzleGameEvent(
+            blackPlayer.name,
+            whitePlayer.name,
+            blackPlayer.rating.ToString(),
+            whitePlayer.rating.ToString(),
+            lichessPuzzleResponse.puzzle.solution,
+            lichessPuzzleResponse.puzzle.themes
+        ));
     }
 
 
@@ -199,11 +262,13 @@ public class GameManager : Singleton<GameManager>
         if (_game == null)
         {
             Debug.LogError("No game in progress. Please start a new game first.");
+            OpenNotificationWindow("No Game in Progress",
+                "Please start a new game first", StartGame, null);
             return MoveType.Invalid;
         }
 
         // Create a move object
-        Move move = new Move(from, to, _currentPlayer, promotionPiece);
+        Move move = new Move(from, to, CurrentPlayer, promotionPiece);
 
         // Check if the move is valid
         bool isValid = _game.IsValidMove(move);
@@ -214,7 +279,7 @@ public class GameManager : Singleton<GameManager>
             string moveString = $"{from}{to}{(promotionPiece.HasValue ? promotionPiece.Value.ToString() : string.Empty)}";
 
             // If in puzzle mode, check if the move matches the current puzzle solution
-            if(_isPuzzleMode && _currentPlayer != _aiSide)
+            if (_isPuzzleMode && CurrentPlayer != _aiSide)
                 ValidatePlayerMoveInPuzzleMode(moveString.ToLower());
 
             // Store the move in history
@@ -231,17 +296,46 @@ public class GameManager : Singleton<GameManager>
             //StockfishController.Instance.FindBestMoveInfinite();
 
             // Switch the current player
-            _currentPlayer = _currentPlayer == ChessDotNet.Player.White ? ChessDotNet.Player.Black : ChessDotNet.Player.White;
+            //CurrentPlayer = CurrentPlayer == ChessDotNet.Player.White ? ChessDotNet.Player.Black : ChessDotNet.Player.White;
 
             // Make the move in the game
             MoveType moveType = _game.MakeMove(move, true);
 
+            CurrentPlayer = _game.WhoseTurn; // Update the current player after making the move
+
             Debug.Log($"Move made: {from} to {to}, MoveType: {moveType}");
 
             //Check if the game is over
-            if (_game.IsCheckmated(_currentPlayer))
+            if (_game.IsCheckmated(CurrentPlayer))
             {
-                Debug.LogWarning($"Game over! {_currentPlayer} is checkmated.");
+                Debug.LogWarning($"Game over! {CurrentPlayer} is checkmated.");
+                bool isWhiteWinner = CurrentPlayer == ChessDotNet.Player.Black;
+                bool isBlackWinner = !isWhiteWinner;
+
+                OpenNotificationWindow("Game Over",
+                    $"{CurrentPlayer} is checkmated. {(isWhiteWinner ? "White" : "Black")} wins! \n Do you want to start a new game?",
+                    StartGameOrPuzzle, null);
+
+                // Notify listeners that the game has ended
+                EventBus<GameEndEvent>.Raise(new GameEndEvent(isWhiteWinner, isBlackWinner, false, false));
+            }
+            else if (_game.IsDraw())
+            {
+                Debug.LogWarning("Game over! It's a draw.");
+                OpenNotificationWindow("Game Over",
+                    "The game has ended in a draw. \n Do you want to start a new game?",
+                    StartGameOrPuzzle, null);
+                // Notify listeners that the game has ended in a draw
+                EventBus<GameEndEvent>.Raise(new GameEndEvent(false, false, true, false));
+            }
+            else if (_game.IsStalemated(CurrentPlayer))
+            {
+                Debug.LogWarning($"Game over! {CurrentPlayer} is in stalemate.");
+                OpenNotificationWindow("Game Over",
+                    $"{CurrentPlayer} is in stalemate. \n Do you want to start a new game?",
+                    StartGameOrPuzzle, null);
+                // Notify listeners that the game has ended in stalemate
+                EventBus<GameEndEvent>.Raise(new GameEndEvent(false, false, true, true));
             }
 
             return moveType;
@@ -250,6 +344,65 @@ public class GameManager : Singleton<GameManager>
         return MoveType.Invalid;
     }
 
+    /// <summary>
+    /// Reloads the current puzzle game.
+    /// This method is used to reset the puzzle game state and allow the player to retry the puzzle from the beginning.
+    /// </summary>
+    public void ReloadPuzzleGame()
+    {
+        if (_currentPuzzleResponse == null)
+        {
+            OpenNotificationWindow("No Puzzle in Progress",
+                "Please start a new game first", () => StartGameOrPuzzle(true), null);
+            return;
+        }
+
+        // Reload the puzzle game with the current response
+        StartGame(_currentPuzzleResponse);
+    }
+
+    public void StartGameOrPuzzle()
+    {
+        if (_isPuzzleMode)
+        {
+            LichessPuzzleFetcher.Instance.GetNextPuzzle();
+            GridManager.Instance.TurnOnBoardLoadingCover();
+        }
+        else
+        {
+            // Otherwise, start a new game
+            StartGame();
+        }
+    }
+
+    public void StartGameOrPuzzle(bool isPuzzleMode = false)
+    {
+        _isPuzzleMode = isPuzzleMode; // Set the puzzle mode based on the parameter
+
+        // If in puzzle mode, fetch the next puzzle
+        if (_isPuzzleMode)
+        {
+            LichessPuzzleFetcher.Instance.GetNextPuzzle();
+            GridManager.Instance.TurnOnBoardLoadingCover();
+        }
+        else
+        {
+            // Otherwise, start a new game
+            StartGame();
+        }
+    }
+    
+    public bool HasHint()
+    {
+        // Check if the current puzzle response has a hint available
+        return _currentPuzzleResponse != null && _game != null && _isPuzzleMode;
+    }
+
+    /// <summary>
+    /// Validates the player's move in puzzle mode.
+    /// This method checks if the player's move matches the expected solution for the current puzzle.
+    /// </summary>
+    /// <param name="moveString"></param>
     private void ValidatePlayerMoveInPuzzleMode(string moveString)
     {
         if (!_isPuzzleMode)
@@ -275,14 +428,18 @@ public class GameManager : Singleton<GameManager>
                 // EventBus<PuzzleCompletedEvent>.Raise(new PuzzleCompletedEvent());
                 return;
             }
-            
+
             Invoke(nameof(AIPuzzleMakeMove), 1f); // Reload the game after a short delay to allow UI updates
         }
         else
         {
             Debug.LogWarning($"Incorrect move: {moveString}. Expected: {_puzzleSolutions[_currentPuzzleSolutionIndex]}");
-            // Optionally, notify listeners of the incorrect move
-            //EventBus<IncorrectMoveEvent>.Raise(new IncorrectMoveEvent { Move = moveString });
+
+            OpenNotificationWindow("Incorrect Move",
+            $"Your move '{moveString}' is incorrect. Do you want to try again?",
+                 ReloadPuzzleGame, null);
+            // Optionally, you can also reset the puzzle game or provide feedback to the player
+            // ReloadPuzzleGame(); // Uncomment if you want to reset the puzzle on incorrect move
         }
     }
 
@@ -365,5 +522,14 @@ public class GameManager : Singleton<GameManager>
         {
             Debug.LogWarning("No game in progress to reload.");
         }
+    }
+    
+    public void OpenNotificationWindow(string title, string message, Action onConfirm = null, Action onCancel = null)
+    {
+        _modalWindowManager.descriptionText = message;
+        _modalWindowManager.titleText = title;
+        _onConfirmAction = onConfirm;
+        _onCancelAction = onCancel;
+        _modalWindowManager.OpenWindow();
     }
 }

@@ -17,7 +17,10 @@ public class StockfishController : Singleton<StockfishController>
     [SerializeField] private bool uci_chess960 = false; // Enable Chess960 (Fischer Random Chess)
     [SerializeField] private int elo = 1320; // ELO rating (1320 - 3190) 
     [SerializeField] private bool forceThreadCountEqualCpuCores = true; // Force thread count to match CPU cores
-    //[SerializeField] private int skillLevel = 20; // 0-20, where 20 is strongest
+    [SerializeField] private GameObject LoadingCover; // Reference to the loading cover UI
+
+    private int newElo;
+    private int newDepth;
 
     private Process stockfishProcess;
     private StreamWriter engineInput;
@@ -57,17 +60,58 @@ public class StockfishController : Singleton<StockfishController>
             UnityEngine.Debug.Log($"Forcing thread count to match CPU cores: {threads}");
         }
 
-        OnPositionEvaluated += (evaluation) =>
-        {
+        newElo = elo;
+        newDepth = depth;
 
+        OnEngineReady += () =>
+        {
+            UnityEngine.Debug.Log("Stockfish engine is ready.");
+            LoadingCover?.SetActive(false); // Hide loading cover when engine is ready
         };
         
         StartEngine();
     }
 
+    /// <summary>
+    /// Cleans up the engine process when the object is destroyed.
+    /// This ensures that the engine is properly stopped and resources are released.
+    /// </summary>
     private void OnDestroy()
     {
         StopEngine();
+    }
+
+    /// <summary>
+    /// Sets the ELO rating for the engine.
+    /// The ELO rating must be between 1320 and 3190.
+    /// </summary>
+    /// <param name="elo"></param>
+    public void SetElo(float elo)
+    {
+        newElo = (int)Mathf.Clamp(elo, 1320, 3190);
+    }
+
+    /// <summary>
+    /// Sets the search depth for the engine.
+    /// </summary>
+    /// <param name="depth"></param>
+    public void SetDepth(float depth)
+    {
+        newDepth = (int)Mathf.Clamp(depth, 1, 50);
+    }
+
+    /// <summary>
+    /// Applies new settings if they have changed
+    /// </summary>
+    public void ApplyNewSettings()
+    {
+        if (newElo != elo || newDepth != depth)
+        {
+            elo = newElo;
+            depth = newDepth;
+            UnityEngine.Debug.Log($"Applying new settings: Elo={elo}, Depth={depth}");
+            ApplySettings();
+        }
     }
 
     /// <summary>
@@ -166,12 +210,18 @@ public class StockfishController : Singleton<StockfishController>
         if (!isEngineReady && stockfishProcess != null)
         {
             //SendCommand($"setoption name Skill Level value {skillLevel}");
-            SendCommand($"setoption name Threads value {threads}");
-            SendCommand($"setoption name Hash value {hashSize}");
-            SendCommand($"setoption name Ponder value {(ponder ? "true" : "false")}");
-            SendCommand($"setoption name UCI_Chess960 value {(uci_chess960 ? "true" : "false")}");
+            // SendCommand($"setoption name Threads value {threads}");
+            // SendCommand($"setoption name Hash value {hashSize}");
+            // SendCommand($"setoption name Ponder value {(ponder ? "true" : "false")}");
+            // SendCommand($"setoption name UCI_Chess960 value {(uci_chess960 ? "true" : "false")}");
+            // New elo and depth settings
             SendCommand($"setoption name UCI_Elo value {elo}");
             SendCommand("ucinewgame");
+        }
+        else
+        {
+            GameManager.Instance.OpenNotificationWindow("Engine not ready", "Please wait for the engine to initialize before applying settings.");
+            return;
         }
     }
 
@@ -500,5 +550,5 @@ public class StockfishController : Singleton<StockfishController>
     public bool IsAnalyzing => isAnalyzing;
     //public int SkillLevel { get => skillLevel; set => skillLevel = Mathf.Clamp(value, 0, 20); }
     public int Depth { get => depth; set => depth = Mathf.Clamp(value, 1, 50); }
-    //public int MoveTime { get => moveTime; set => moveTime = Mathf.Max(value, 100); }
+    public int Elo { get => elo; set => elo = Mathf.Clamp(value, 1320, 3190); }
 }
