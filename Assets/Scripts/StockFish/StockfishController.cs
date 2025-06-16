@@ -179,16 +179,12 @@ public class StockfishController : Singleton<StockfishController>
     /// </summary>
     private string GetStockfishPath()
     {
-        string resourcesPath = Path.Combine(Application.dataPath, "Resources");
+        string resourcesPath = Application.streamingAssetsPath;
 
 #if UNITY_EDITOR_WIN || UNITY_STANDALONE_WIN
         return Path.Combine(resourcesPath, "stockfish-windows-x86-64-avx2.exe");
-#elif UNITY_EDITOR_OSX || UNITY_STANDALONE_OSX
-            return Path.Combine(resourcesPath, "stockfish-windows-x86-64-avx2");
-#elif UNITY_EDITOR_LINUX || UNITY_STANDALONE_LINUX
-            return Path.Combine(resourcesPath, "stockfish-windows-x86-64-avx2");
 #else
-            return Path.Combine(resourcesPath, "stockfish-windows-x86-64-avx2");
+            return Path.Combine(resourcesPath, "stockfish-windows-x86-64-avx2.exe");
 #endif
     }
 

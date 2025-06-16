@@ -391,7 +391,7 @@ public class GameManager : Singleton<GameManager>
             StartGame();
         }
     }
-    
+
     public bool HasHint()
     {
         // Check if the current puzzle response has a hint available
@@ -523,13 +523,26 @@ public class GameManager : Singleton<GameManager>
             Debug.LogWarning("No game in progress to reload.");
         }
     }
-    
+
+    /// <summary>
+    /// Opens a notification window with the specified title and message.
+    /// This method is used to display important messages to the user, such as game over notifications or errors.
+    /// </summary>
+    /// <param name="title"></param>
+    /// <param name="message"></param>
+    /// <param name="onConfirm"></param>
+    /// <param name="onCancel"></param>
     public void OpenNotificationWindow(string title, string message, Action onConfirm = null, Action onCancel = null)
     {
-        _modalWindowManager.descriptionText = message;
-        _modalWindowManager.titleText = title;
+        _modalWindowManager.windowDescription.text = message;
+        _modalWindowManager.windowTitle.text = title;
         _onConfirmAction = onConfirm;
         _onCancelAction = onCancel;
         _modalWindowManager.OpenWindow();
+    }
+    
+    public ChessDotNet.Player GetAIPlayerSide()
+    {
+        return _aiSide;
     }
 }

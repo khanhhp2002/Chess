@@ -6223,7 +6223,7 @@ MonoBehaviour:
   onCancel:
     m_PersistentCalls:
       m_Calls: []
-  useCustomContent: 0
+  useCustomContent: 1
   isOn: 0
   closeOnCancel: 1
   closeOnConfirm: 1
@@ -11756,6 +11756,7 @@ GameObject:
   - component: {fileID: 1937596172}
   - component: {fileID: 1937596174}
   - component: {fileID: 1937596175}
+  - component: {fileID: 1937596176}
   m_Layer: 5
   m_Name: Board
   m_TagString: Untagged
@@ -11810,6 +11811,7 @@ MonoBehaviour:
   _playerInfoBottom: {fileID: 695828969}
   _boardLoadingCover: {fileID: 1895204893}
   _hintText: {fileID: 114958481095937656}
+  _boardCanvasGroup: {fileID: 1937596176}
 --- !u!114 &1937596175
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -11824,6 +11826,18 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_AspectMode: 2
   m_AspectRatio: 1
+--- !u!225 &1937596176
+CanvasGroup:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1937596171}
+  m_Enabled: 1
+  m_Alpha: 1
+  m_Interactable: 1
+  m_BlocksRaycasts: 1
+  m_IgnoreParentGroups: 0
 --- !u!1 &1947133962
 GameObject:
   m_ObjectHideFlags: 0

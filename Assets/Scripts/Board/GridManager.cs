@@ -30,6 +30,8 @@ public class GridManager : Singleton<GridManager>
     [SerializeField] private BoardLoadingCover _boardLoadingCover;
     [SerializeField] private TMP_Text _hintText;
 
+    [SerializeField] private CanvasGroup _boardCanvasGroup;
+
 
     private Cell[,] _grid;
 
@@ -372,6 +374,14 @@ public class GridManager : Singleton<GridManager>
     private void OnPlayerTurnChanged(CurrentPlayerChangedEvent currentPlayerChangedEvent)
     {
         ChessDotNet.Player currentPlayer = currentPlayerChangedEvent.CurrentPlayer;
+        if (currentPlayer == GameManager.Instance.GetAIPlayerSide())
+        {
+            _boardCanvasGroup.interactable = false;
+        }
+        else
+        {
+            _boardCanvasGroup.interactable = true;
+        }
 
         if (currentPlayer == ChessDotNet.Player.White)
         {
