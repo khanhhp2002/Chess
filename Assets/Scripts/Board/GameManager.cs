@@ -424,6 +424,9 @@ public class GameManager : Singleton<GameManager>
             if (_currentPuzzleSolutionIndex >= _puzzleSolutions.Length)
             {
                 Debug.Log("Puzzle completed!");
+                OpenNotificationWindow("Game Over",
+                   "Complete the puzzle  \n Do you want to start a new game?",
+                   StartGameOrPuzzle, null);
                 // Notify listeners that the puzzle is completed
                 // EventBus<PuzzleCompletedEvent>.Raise(new PuzzleCompletedEvent());
                 return;
@@ -476,6 +479,7 @@ public class GameManager : Singleton<GameManager>
     {
         if (_isPuzzleMode == false)
         {
+
             Debug.LogWarning("Not in puzzle mode. AI cannot make a move.");
             return;
         }
@@ -499,6 +503,9 @@ public class GameManager : Singleton<GameManager>
             if (_currentPuzzleSolutionIndex >= _puzzleSolutions.Length)
             {
                 Debug.Log("Puzzle completed!");
+                OpenNotificationWindow("Game Over",
+                   "Complete the puzzle  \n Do you want to start a new game?",
+                   StartGameOrPuzzle, null);
                 // Notify listeners that the puzzle is completed
                 // EventBus<PuzzleCompletedEvent>.Raise(new PuzzleCompletedEvent());
             }
