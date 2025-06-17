@@ -146,7 +146,7 @@ public class StockfishController : Singleton<StockfishController>
                 engineInputStream = androidProcess.Call<AndroidJavaObject>("getOutputStream");
                 engineOutputStream = androidProcess.Call<AndroidJavaObject>("getInputStream");
 
-                Debug.Log("Stockfish started using ProcessBuilder (Android)");
+                UnityEngine.Debug.Log("Stockfish started using ProcessBuilder (Android)");
             }
 
             #else
@@ -216,7 +216,7 @@ public class StockfishController : Singleton<StockfishController>
                 androidProcess = null;
             }
 
-            Debug.Log("[Android] Stockfish engine stopped and cleaned up.");
+            UnityEngine.Debug.Log("[Android] Stockfish engine stopped and cleaned up.");
         }
         catch (Exception e)
         {
@@ -283,12 +283,12 @@ public class StockfishController : Singleton<StockfishController>
                 }
                 catch (Exception e)
                 {
-                    Debug.LogError("chmod failed: " + e.Message);
+                    UnityEngine.Debug.LogError("chmod failed: " + e.Message);
                 }
             }
             else
             {
-                Debug.LogError("Failed to copy Stockfish: " + www.error);
+                UnityEngine.Debug.LogError("Failed to copy Stockfish: " + www.error);
             }
         }
 
@@ -360,8 +360,8 @@ public class StockfishController : Singleton<StockfishController>
     /// </summary>
     private void SendCommand(string command)
     {
-        if (!isEngineReady)
-            return;
+        // if (!isEngineReady)
+        //     return;
         try
         {
 #if UNITY_ANDROID && !UNITY_EDITOR
@@ -379,7 +379,7 @@ public class StockfishController : Singleton<StockfishController>
                     engineInputStream.Call("write", byteArray);
                     engineInputStream.Call("flush");
 
-                    Debug.Log($"[Android] Sent: {command}");
+                    UnityEngine.Debug.Log($"[Android] Sent: {command}");
                 }
             }
 #else
