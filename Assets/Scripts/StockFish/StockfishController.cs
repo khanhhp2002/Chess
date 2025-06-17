@@ -121,7 +121,7 @@ public class StockfishController : Singleton<StockfishController>
     {
         try
         {
-            string enginePath = GetStockfishPath();
+            string enginePath = PrepareAndroidStockfishExecutable();
 
             if (!File.Exists(enginePath))
             {
@@ -172,6 +172,50 @@ public class StockfishController : Singleton<StockfishController>
             engineThread.Join(100); // Wait for thread to finish
             engineThread = null;
         }
+    }
+
+    private string PrepareAndroidStockfishExecutable()
+    {
+    #if UNITY_ANDROID && !UNITY_EDITOR
+        string dstPath = Path.Combine(Application.persistentDataPath, "stockfish");
+
+        // Only copy if not exists
+        if (!File.Exists(dstPath))
+        {
+            string srcPath = Path.Combine(Application.streamingAssetsPath, "stockfish-android-armv8");
+
+            // Load binary from StreamingAssets
+            UnityEngine.Networking.UnityWebRequest www = UnityEngine.Networking.UnityWebRequest.Get(srcPath);
+            www.SendWebRequest();
+            while (!www.isDone) { }
+
+            if (string.IsNullOrEmpty(www.error))
+            {
+                File.WriteAllBytes(dstPath, www.downloadHandler.data);
+
+                // Set executable permission (chmod 744)
+                try
+                {
+                    using (var process = new AndroidJavaObject("java.lang.ProcessBuilder", new string[] { "chmod", "744", dstPath }))
+                    {
+                        process.Call<AndroidJavaObject>("start");
+                    }
+                }
+                catch (Exception e)
+                {
+                    Debug.LogError("chmod failed: " + e.Message);
+                }
+            }
+            else
+            {
+                Debug.LogError("Failed to copy Stockfish: " + www.error);
+            }
+        }
+
+        return dstPath;
+    #else
+        return GetStockfishPath();
+    #endif
     }
 
     /// <summary>
