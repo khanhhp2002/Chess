@@ -23,8 +23,11 @@ public class StockfishController : Singleton<StockfishController>
     private int newDepth;
 
     private Process stockfishProcess;
+    private AndroidJavaObject androidProcess;
     private StreamWriter engineInput;
     private StreamReader engineOutput;
+    private AndroidJavaObject engineInputStream; // Only for Android
+    private AndroidJavaObject engineOutputStream; // Only for Android
     private bool isEngineReady = false;
     private bool isAnalyzing = false;
 
@@ -129,6 +132,25 @@ public class StockfishController : Singleton<StockfishController>
                 return;
             }
 
+            #if UNITY_ANDROID && !UNITY_EDITOR
+            // Use JNI to launch Stockfish on Android
+            using (AndroidJavaClass unityPlayer = new AndroidJavaClass("com.unity3d.player.UnityPlayer"))
+            using (AndroidJavaObject activity = unityPlayer.GetStatic<AndroidJavaObject>("currentActivity"))
+            {
+                AndroidJavaObject processBuilder = new AndroidJavaObject("java.lang.ProcessBuilder", new string[] { enginePath });
+                processBuilder.Call<AndroidJavaObject>("redirectErrorStream", true);
+
+                // Now start and assign to androidProcess
+                androidProcess = processBuilder.Call<AndroidJavaObject>("start");
+
+                engineInputStream = androidProcess.Call<AndroidJavaObject>("getOutputStream");
+                engineOutputStream = androidProcess.Call<AndroidJavaObject>("getInputStream");
+
+                Debug.Log("Stockfish started using ProcessBuilder (Android)");
+            }
+
+            #else
+            // PC or Editor
             ProcessStartInfo startInfo = new ProcessStartInfo
             {
                 FileName = enginePath,
@@ -143,11 +165,10 @@ public class StockfishController : Singleton<StockfishController>
             engineInput = stockfishProcess.StandardInput;
             engineOutput = stockfishProcess.StandardOutput;
 
-            // Start reading output in a coroutine
             readingOutput = true;
             engineThread = new Thread(ReadEngineOutputLoop);
             engineThread.Start();
-
+            #endif
 
             // Initialize engine
             InitializeEngine();
@@ -169,10 +190,69 @@ public class StockfishController : Singleton<StockfishController>
 
         if (engineThread != null && engineThread.IsAlive)
         {
-            engineThread.Join(100); // Wait for thread to finish
+            engineThread.Join(100);
             engineThread = null;
         }
+
+    #if UNITY_ANDROID && !UNITY_EDITOR
+        try
+        {
+            if (engineInputStream != null)
+            {
+                engineInputStream.Call("close");
+                engineInputStream = null;
+            }
+
+            if (engineOutputStream != null)
+            {
+                engineOutputStream.Call("close");
+                engineOutputStream = null;
+            }
+
+            // Optionally destroy the process
+            if (androidProcess != null)
+            {
+                androidProcess.Call("destroy");
+                androidProcess = null;
+            }
+
+            Debug.Log("[Android] Stockfish engine stopped and cleaned up.");
+        }
+        catch (Exception e)
+        {
+            OnError?.Invoke($"[Android] Error stopping engine: {e.Message}");
+        }
+    #else
+        try
+        {
+            if (engineInput != null)
+            {
+                engineInput.Close();
+                engineInput = null;
+            }
+
+            if (engineOutput != null)
+            {
+                engineOutput.Close();
+                engineOutput = null;
+            }
+
+            if (stockfishProcess != null && !stockfishProcess.HasExited)
+            {
+                stockfishProcess.Kill();
+                stockfishProcess.Dispose();
+                stockfishProcess = null;
+            }
+
+            UnityEngine.Debug.Log("[PC] Stockfish engine stopped and cleaned up.");
+        }
+        catch (Exception e)
+        {
+            OnError?.Invoke($"[PC] Error stopping engine: {e.Message}");
+        }
+    #endif
     }
+
 
     private string PrepareAndroidStockfishExecutable()
     {
@@ -225,11 +305,7 @@ public class StockfishController : Singleton<StockfishController>
     {
         string resourcesPath = Application.streamingAssetsPath;
 
-#if UNITY_EDITOR_WIN || UNITY_STANDALONE_WIN
         return Path.Combine(resourcesPath, "stockfish-windows-x86-64-avx2.exe");
-#else
-            return Path.Combine(resourcesPath, "stockfish-windows-x86-64-avx2.exe");
-#endif
     }
 
     /// <summary>
@@ -284,20 +360,43 @@ public class StockfishController : Singleton<StockfishController>
     /// </summary>
     private void SendCommand(string command)
     {
+        if (!isEngineReady)
+            return;
         try
         {
+#if UNITY_ANDROID && !UNITY_EDITOR
+            if (engineInputStream != null)
+            {
+                // Convert string to byte[] and write to OutputStream
+                byte[] commandBytes = System.Text.Encoding.UTF8.GetBytes(command + "\n");
+
+                using (AndroidJavaClass byteArrayOutputStreamClass = new AndroidJavaClass("java.io.ByteArrayOutputStream"))
+                using (AndroidJavaObject byteArrayOutputStream = new AndroidJavaObject("java.io.ByteArrayOutputStream"))
+                {
+                    byteArrayOutputStream.Call("write", commandBytes);
+                    byte[] byteArray = byteArrayOutputStream.Call<byte[]>("toByteArray");
+
+                    engineInputStream.Call("write", byteArray);
+                    engineInputStream.Call("flush");
+
+                    Debug.Log($"[Android] Sent: {command}");
+                }
+            }
+#else
             if (engineInput != null && stockfishProcess != null && !stockfishProcess.HasExited)
             {
                 engineInput.WriteLine(command);
                 engineInput.Flush();
-                UnityEngine.Debug.Log($"Sent: {command}");
+                UnityEngine.Debug.Log($"[PC] Sent: {command}");
             }
+#endif
         }
         catch (Exception e)
         {
             OnError?.Invoke($"Error sending command: {e.Message}");
         }
     }
+
 
     /// <summary>
     /// Reads engine output continuously
@@ -306,28 +405,65 @@ public class StockfishController : Singleton<StockfishController>
     {
         try
         {
-            while (readingOutput && stockfishProcess != null && !stockfishProcess.HasExited)
+            while (readingOutput)
             {
-                if (engineOutput != null && !engineOutput.EndOfStream)
+    #if UNITY_ANDROID && !UNITY_EDITOR
+                if (engineOutputStream != null)
+                {
+                    // Check how many bytes are available to read
+                    int available = engineOutputStream.Call<int>("available");
+
+                    if (available > 0)
+                    {
+                        byte[] buffer = new byte[available];
+                        AndroidJavaObject byteBuffer = new AndroidJavaObject("java.nio.ByteBuffer", buffer);
+                        int bytesRead = engineOutputStream.Call<int>("read", buffer);
+
+                        if (bytesRead > 0)
+                        {
+                            string output = System.Text.Encoding.UTF8.GetString(buffer, 0, bytesRead);
+                            string[] lines = output.Split('\n'); // Might read multiple lines at once
+
+                            foreach (var line in lines)
+                            {
+                                string trimmed = line.Trim();
+                                if (!string.IsNullOrEmpty(trimmed))
+                                {
+                                    string capturedLine = trimmed;
+                                    UnityMainThreadDispatcher.Enqueue(() =>
+                                    {
+                                        ProcessEngineOutput(capturedLine);
+                                        OnEngineOutput?.Invoke(capturedLine);
+                                    });
+                                }
+                            }
+                        }
+                    }
+                    else
+                    {
+                        Thread.Sleep(10);
+                    }
+                }
+    #else
+                // PC / Editor
+                if (engineOutput != null && stockfishProcess != null && !stockfishProcess.HasExited && !engineOutput.EndOfStream)
                 {
                     string line = engineOutput.ReadLine();
                     if (!string.IsNullOrEmpty(line))
                     {
-                        // Capture local copy for thread-safety
-                        string output = line;
-
-                        // Dispatch to Unity main thread
+                        string capturedLine = line;
                         UnityMainThreadDispatcher.Enqueue(() =>
                         {
-                            ProcessEngineOutput(output);
-                            OnEngineOutput?.Invoke(output);
+                            ProcessEngineOutput(capturedLine);
+                            OnEngineOutput?.Invoke(capturedLine);
                         });
                     }
                 }
                 else
                 {
-                    Thread.Sleep(10); // Avoid tight loop when idle
+                    Thread.Sleep(10);
                 }
+    #endif
             }
         }
         catch (Exception e)
@@ -335,6 +471,7 @@ public class StockfishController : Singleton<StockfishController>
             OnError?.Invoke($"Error reading engine output: {e.Message}");
         }
     }
+
 
     /// <summary>
     /// Processes engine output and triggers appropriate events
