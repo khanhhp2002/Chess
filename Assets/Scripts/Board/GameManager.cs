@@ -85,7 +85,7 @@ public class GameManager : Singleton<GameManager>
 
     private void Start()
     {
-        StockfishController.Instance.OnBestMoveFound += AIMakeMove;
+        StockfishTcpClient.Instance.OnBestMoveFound += AIMakeMove;
         _modalWindowManager.onConfirm.AddListener(() =>
         {
             _onConfirmAction?.Invoke();
@@ -98,7 +98,7 @@ public class GameManager : Singleton<GameManager>
 
     void OnDestroy()
     {
-        StockfishController.Instance.OnBestMoveFound -= AIMakeMove;
+        StockfishTcpClient.Instance.OnBestMoveFound -= AIMakeMove;
     }
 
     /// <summary>
@@ -131,10 +131,10 @@ public class GameManager : Singleton<GameManager>
         });
 
         // Notify Stockfish of the move history
-        StockfishController.Instance.SetPositionWithMoves(_moveHistory);
+        StockfishTcpClient.Instance.SetPositionWithMoves(_moveHistory);
 
         // Request Stockfish to find the best move for the next turn
-        StockfishController.Instance.FindBestMove();
+        StockfishTcpClient.Instance.FindBestMove();
 
 
         Debug.Log("Game started!");
@@ -289,10 +289,10 @@ public class GameManager : Singleton<GameManager>
             //StockfishController.Instance.StopFindBestMoveInfinite();
 
             // Notify Stockfish of the move history
-            StockfishController.Instance.SetPositionWithMoves(_moveHistory);
+            StockfishTcpClient.Instance.SetPositionWithMoves(_moveHistory);
 
             // Request Stockfish to find the best move for the next turn
-            StockfishController.Instance.FindBestMove();
+            StockfishTcpClient.Instance.FindBestMove();
             //StockfishController.Instance.FindBestMoveInfinite();
 
             // Switch the current player

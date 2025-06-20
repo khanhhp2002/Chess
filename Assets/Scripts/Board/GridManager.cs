@@ -66,7 +66,7 @@ public class GridManager : Singleton<GridManager>
         _newPuzzleGameEventBinding = new EventBinding<NewPuzzleGameEvent>(OnNewPuzzleGame);
         EventBus<NewPuzzleGameEvent>.Register(_newPuzzleGameEventBinding);
 
-        StockfishController.Instance.OnPositionEvaluated += UpdateEvaluationChart;
+        StockfishTcpClient.Instance.OnPositionEvaluated += UpdateEvaluationChart;
     }
 
     /// <summary>
@@ -80,7 +80,7 @@ public class GridManager : Singleton<GridManager>
         EventBus<ClearBoardEvent>.Deregister(_clearBoardEventBinding);
         EventBus<CurrentPlayerChangedEvent>.Deregister(_currentPlayerChangedEventBinding);
 
-        StockfishController.Instance.OnPositionEvaluated -= UpdateEvaluationChart;
+        StockfishTcpClient.Instance.OnPositionEvaluated -= UpdateEvaluationChart;
     }
 
     /// <summary>

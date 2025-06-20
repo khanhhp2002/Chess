@@ -43,7 +43,7 @@ public class PlayerInfo : MonoBehaviour
         if (isBot)
         {
             playerNameText.text = "STOCKFISH";
-            playerRatingText.text = $"Elo: {StockfishController.Instance.Elo}";
+            playerRatingText.text = $"Elo: {StockfishTcpClient.Instance.Elo}";
             playerAvatarImage.sprite = defaultBotAvatar; // Set to a default bot avatar if needed
         }
         else
